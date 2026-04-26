@@ -1,0 +1,5 @@
+{
+    "trade_date": "2026-04-24",
+    "tickers": ["NVDA", "AAPL", "MSFT", "GOOGL", "TSLA"],
+    "max_workers": 3
+}

@@ -109,10 +109,20 @@ git clone https://github.com/TauricResearch/TradingAgents.git
 cd TradingAgents
 ```
 
-Create a virtual environment in any of your favorite environment managers:
+Create a virtual environment:
 ```bash
 conda create -n tradingagents python=3.13
 conda activate tradingagents
+```
+
+Or using venv (uses whichever Python you invoke it with):
+```bash
+python -m venv venv            # uses your default Python
+py -3.13 -m venv venv          # Windows (py launcher) — specify version
+python3.13 -m venv venv        # macOS / Linux — specify version
+
+venv\Scripts\activate           # Windows
+source venv/bin/activate        # macOS / Linux
 ```
 
 Install the package and its dependencies:

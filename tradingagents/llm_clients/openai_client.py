@@ -216,6 +216,10 @@ class OpenAIClient(BaseLLMClient):
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
 
+        # Allow explicit base_url to override provider defaults
+        if self.base_url:
+            llm_kwargs["base_url"] = self.base_url
+
         # Forward user-provided kwargs
         for key in _PASSTHROUGH_KWARGS:
             if key in self.kwargs:

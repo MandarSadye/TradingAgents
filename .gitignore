@@ -149,6 +149,7 @@ activemq-data/
 
 # Environments
 .env
+.env.enterprise
 .envrc
 .venv
 env/
@@ -156,6 +157,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+pyvenv.cfg
+scripts/
+Include/
+Lib/
+
+# Analysis reports
+reports/
 
 # Spyder project settings
 .spyderproject
