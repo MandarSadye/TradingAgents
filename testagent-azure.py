@@ -29,7 +29,8 @@ with open(Path(__file__).parent / watchlist_file) as f:
 tickers = list(dict.fromkeys(t for v in watchlist["categories"].values() for t in v.split()))
 trade_date = watchlist["trade_date"]
 MAX_WORKERS = watchlist.get("max_workers", 3)
-OUTPUT_DIR = Path("reports") / trade_date
+watchlist_name = Path(watchlist_file).stem  # "watchlist" or "watchlist-india"
+OUTPUT_DIR = Path("reports") / f"{trade_date}-{watchlist_name}"
 
 
 def analyze(ticker):
