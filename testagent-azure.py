@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from pathlib import Path
 from datetime import date
@@ -20,11 +21,12 @@ config["llm_provider"] = "azure"
 config["quick_think_llm"] = "gpt-5.4"      # Your Azure deployment name for GPT-5.4 mini
 config["deep_think_llm"] = "gpt-5.4-mini"         # Your Azure deployment name for GPT-5.4 pro
 
-# Load watchlist config
-with open(Path(__file__).parent / "watchlist.json") as f:
+# Load watchlist config (pass filename as arg: python testagent-azure.py watchlist-india.json)
+watchlist_file = sys.argv[1] if len(sys.argv) > 1 else "watchlist.json"
+with open(Path(__file__).parent / watchlist_file) as f:
     watchlist = json.load(f)
 
-tickers = watchlist["tickers"]
+tickers = list(dict.fromkeys(t for v in watchlist["categories"].values() for t in v.split()))
 trade_date = watchlist["trade_date"]
 MAX_WORKERS = watchlist.get("max_workers", 3)
 OUTPUT_DIR = Path("reports") / trade_date
