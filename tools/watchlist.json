@@ -1,0 +1,8 @@
+{
+    "trade_date": "2026-04-24",
+    "max_workers": 3,
+    "categories": {
+        "mega_cap_tech": "NVDA",
+        "semiconductors": "AMD INTC"
+    }
+}

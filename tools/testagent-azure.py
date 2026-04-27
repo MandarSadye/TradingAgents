@@ -6,11 +6,13 @@ from datetime import date
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
+from watchlist_manager import Watchlist
 
 # Load from environment variables or .env.enterprise file
 # DO NOT hardcode API keys in code
 from dotenv import load_dotenv
-load_dotenv(".env.enterprise")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(_PROJECT_ROOT / ".env.enterprise")
 
 # Disable warnings from pydantic
 import warnings
@@ -21,16 +23,29 @@ config["llm_provider"] = "azure"
 config["quick_think_llm"] = "gpt-5.4-mini"      # Your Azure deployment name for GPT-5.4 mini
 config["deep_think_llm"] = "gpt-5.4"         # Your Azure deployment name for GPT-5.4 pro
 
-# Load watchlist config (pass filename as arg: python testagent-azure.py watchlist-india.json)
-watchlist_file = sys.argv[1] if len(sys.argv) > 1 else "watchlist.json"
-with open(Path(__file__).parent / watchlist_file) as f:
-    watchlist = json.load(f)
+# Load watchlist config
+#   python testagent-azure.py [watchlist.json] [--filter 'nasdaq.*large']
+import argparse
+_ap = argparse.ArgumentParser()
+_ap.add_argument("watchlist", nargs="?", default="watchlist.json",
+                 help="Watchlist JSON file (default: watchlist.json)")
+_ap.add_argument("--filter", "-f", dest="cat_filter", default=None,
+                 help="Regex or substring to match category names, e.g. 'large-cap' or 'nasdaq.*2026-04-28'")
+_args = _ap.parse_args()
 
-tickers = list(dict.fromkeys(t for v in watchlist["categories"].values() for t in v.split()))
-trade_date = watchlist["trade_date"]
-MAX_WORKERS = watchlist.get("max_workers", 3)
-watchlist_name = Path(watchlist_file).stem  # "watchlist" or "watchlist-india"
-OUTPUT_DIR = Path("reports") / f"{trade_date}-{watchlist_name}"
+wl = Watchlist.load(Path(__file__).parent / _args.watchlist)
+
+tickers = wl.tickers(filter=_args.cat_filter)
+trade_date = wl.trade_date
+MAX_WORKERS = wl.max_workers
+watchlist_name = Path(_args.watchlist).stem
+OUTPUT_DIR = _PROJECT_ROOT / "reports" / f"{trade_date}-{watchlist_name}"
+
+if _args.cat_filter:
+    matched = wl.filter_categories(_args.cat_filter)
+    print(f"Filter '{_args.cat_filter}' matched {len(matched)} categories, {len(tickers)} tickers")
+    for cat in matched:
+        print(f"  {cat}")
 
 
 def analyze(ticker):
