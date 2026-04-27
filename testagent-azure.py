@@ -18,8 +18,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 config = DEFAULT_CONFIG.copy()
 config["llm_provider"] = "azure"
-config["quick_think_llm"] = "gpt-5.4"      # Your Azure deployment name for GPT-5.4 mini
-config["deep_think_llm"] = "gpt-5.4-mini"         # Your Azure deployment name for GPT-5.4 pro
+config["quick_think_llm"] = "gpt-5.4-mini"      # Your Azure deployment name for GPT-5.4 mini
+config["deep_think_llm"] = "gpt-5.4"         # Your Azure deployment name for GPT-5.4 pro
 
 # Load watchlist config (pass filename as arg: python testagent-azure.py watchlist-india.json)
 watchlist_file = sys.argv[1] if len(sys.argv) > 1 else "watchlist.json"
