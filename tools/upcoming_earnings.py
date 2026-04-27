@@ -42,7 +42,7 @@ def next_earnings(ticker: str) -> date | None:
 
 
 def main() -> int:
-    wl = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("watchlist.json")
+    wl = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "watchlist.json"
     days = int(sys.argv[2]) if len(sys.argv) > 2 else 21
 
     tickers = load_tickers(wl)
