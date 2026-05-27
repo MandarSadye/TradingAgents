@@ -31,6 +31,8 @@ _ap.add_argument("watchlist", nargs="?", default="watchlist.json",
                  help="Watchlist JSON file (default: watchlist.json)")
 _ap.add_argument("--filter", "-f", dest="cat_filter", default=None,
                  help="Regex or substring to match category names, e.g. 'large-cap' or 'nasdaq.*2026-04-28'")
+_ap.add_argument("--verbose", "-v", action="store_true",
+                 help="Enable debug/verbose mode in TradingAgentsGraph (streams agent reasoning to stdout)")
 _args = _ap.parse_args()
 
 wl = Watchlist.load(Path(__file__).parent / _args.watchlist)
@@ -41,6 +43,11 @@ MAX_WORKERS = wl.max_workers
 watchlist_name = Path(_args.watchlist).stem
 OUTPUT_DIR = _PROJECT_ROOT / "reports" / f"{trade_date}-{watchlist_name}"
 
+# In verbose mode, force sequential execution so interleaved agent output stays readable
+if _args.verbose and MAX_WORKERS > 1:
+    print(f"[verbose] Forcing MAX_WORKERS=1 (was {MAX_WORKERS}) to keep debug output readable")
+    MAX_WORKERS = 1
+
 if _args.cat_filter:
     matched = wl.filter_categories(_args.cat_filter)
     print(f"Filter '{_args.cat_filter}' matched {len(matched)} categories, {len(tickers)} tickers")
@@ -50,7 +57,7 @@ if _args.cat_filter:
 
 def analyze(ticker):
     """Run analysis for a single ticker in its own graph instance."""
-    ta = TradingAgentsGraph(debug=False, config=config)
+    ta = TradingAgentsGraph(debug=_args.verbose, config=config)
     final_state, decision = ta.propagate(ticker, trade_date)
     return ticker, final_state, decision
 

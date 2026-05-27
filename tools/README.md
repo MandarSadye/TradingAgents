@@ -81,6 +81,43 @@ python tools/upcoming_earnings_calendar.py --source both --days 14 --out tools/e
 
 ---
 
+### `upcoming_earnings_calendar_all.py`
+
+Multi-exchange forward earnings calendar covering **NYSE, AMEX, ARCA,
+NQ.NM, NQ.SC, BATS, NSE, BSE**. Pulls from the NASDAQ calendar API for
+US names (then filters per-ticker to the requested venue via yfinance),
+the NSE event-calendar API, and the BSE forthcoming-results API. Output is
+a watchlist JSON keyed by `{exchange}_{date}_{cap-tier}`.
+
+```
+python tools/upcoming_earnings_calendar_all.py [--region {US,INDIA,ALL}] [--exchanges LIST] [--days N] [--out PATH] [--no-mcap]
+```
+
+| Arg | Default | Description |
+|---|---|---|
+| `--region` | `ALL` | Convenience group: `US` (NYSE/AMEX/ARCA/NQ.NM/NQ.SC/BATS), `INDIA` (NSE/BSE), or `ALL` |
+| `--exchanges` | *(none)* | Comma-separated subset of `NYSE,AMEX,ARCA,NQ.NM,NQ.SC,BATS,NSE,BSE`. Overrides `--region` |
+| `--days` | `14` | Calendar days to look ahead |
+| `--out` | `earnings_watchlist_{region}_{today}.json` | Output file path |
+| `--no-mcap` | *(off)* | Skip per-ticker market-cap lookup (faster; cap tier becomes `unknown-cap`) |
+
+**Examples:**
+```bash
+# US only, next 7 days
+python tools/upcoming_earnings_calendar_all.py --region US --days 7
+
+# India only (NSE + BSE), next 30 days
+python tools/upcoming_earnings_calendar_all.py --region INDIA --days 30
+
+# All 8 exchanges, default 14-day window
+python tools/upcoming_earnings_calendar_all.py
+
+# Custom subset (overrides --region)
+python tools/upcoming_earnings_calendar_all.py --exchanges NYSE,NQ.NM,NQ.SC --days 14
+```
+
+---
+
 ### `upcoming_earnings.py`
 
 Scans tickers from a watchlist and prints those with **earnings within N days**
@@ -179,20 +216,23 @@ nuclear_energy
 
 | Part | Values |
 |---|---|
-| `exchange` | `nasdaq`, `nse` |
+| `exchange` | `nasdaq`, `nse`, `bse`, `nyse`, `amex`, `arca`, `nqnm`, `nqsc`, `bats` |
 | `date` | ISO date (`2026-04-28`) |
 | `cap-tier` | `mega-cap`, `large-cap`, `mid-cap`, `small-cap`, `micro-cap`, `unknown-cap` |
 
 **Examples:**
 ```
 nasdaq_2026-04-28_large-cap
-nasdaq_2026-04-28_mega-cap
+nyse_2026-05-29_mega-cap
+nqsc_2026-05-30_small-cap
 nse_2026-04-29_mid-cap
+bse_2026-04-30_micro-cap
 ```
 
 ### Ticker Symbol Format
 
 | Exchange | Format | Example |
 |---|---|---|
-| NASDAQ / US | Plain symbol | `AAPL`, `GOOGL`, `BRK.A` |
+| NASDAQ / NYSE / AMEX / ARCA / BATS | Plain symbol | `AAPL`, `GOOGL`, `BRK.A` |
 | NSE / India | Symbol + `.NS` suffix | `RELIANCE.NS`, `TCS.NS`, `M&M.NS` |
+| BSE / India | Symbol + `.BO` suffix | `RELIANCE.BO`, `TCS.BO` |

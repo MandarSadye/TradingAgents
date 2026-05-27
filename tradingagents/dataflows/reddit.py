@@ -14,16 +14,65 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from typing import Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+# curl_cffi impersonates real browser TLS fingerprints, which is what Reddit's
+# anti-bot actually keys on. Safari17 fingerprint reliably bypasses the 403.
+try:
+    from curl_cffi import requests as _cffi_requests
+    _HAS_CFFI = True
+except ImportError:
+    _cffi_requests = None
+    _HAS_CFFI = False
+
 logger = logging.getLogger(__name__)
 
-_API = "https://www.reddit.com/r/{sub}/search.json?{qs}"
-_UA = "tradingagents/0.2 (+https://github.com/TauricResearch/TradingAgents)"
+# Reddit blocks unauthenticated JSON from most non-residential IPs (HTTP 403).
+# To get real data you need either:
+#   1. A free Reddit "script" app -> set REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET
+#      (we'll OAuth at oauth.reddit.com), or
+#   2. Set TRADINGAGENTS_DISABLE_REDDIT=1 to skip silently with no warnings.
+_PUBLIC_API = "https://old.reddit.com/r/{sub}/search.json?{qs}"
+_OAUTH_API  = "https://oauth.reddit.com/r/{sub}/search.json?{qs}"
+_TOKEN_URL  = "https://www.reddit.com/api/v1/access_token"
+_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
+_DISABLED = os.getenv("TRADINGAGENTS_DISABLE_REDDIT", "").lower() in ("1", "true", "yes")
+_token_cache: dict[str, float | str] = {}  # {"token": str, "expires": epoch}
+
+
+def _get_oauth_token() -> str | None:
+    """Return a cached OAuth bearer if REDDIT_CLIENT_ID/SECRET are set."""
+    cid = os.getenv("REDDIT_CLIENT_ID")
+    sec = os.getenv("REDDIT_CLIENT_SECRET")
+    if not (cid and sec):
+        return None
+    now = time.time()
+    if _token_cache.get("token") and float(_token_cache.get("expires", 0)) > now + 30:
+        return str(_token_cache["token"])
+    import base64
+    body = urlencode({"grant_type": "client_credentials"}).encode()
+    auth = base64.b64encode(f"{cid}:{sec}".encode()).decode()
+    req = Request(_TOKEN_URL, data=body,
+                  headers={"Authorization": f"Basic {auth}", "User-Agent": _UA})
+    try:
+        with urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        _token_cache["token"]   = data["access_token"]
+        _token_cache["expires"] = now + int(data.get("expires_in", 3600))
+        return str(_token_cache["token"])
+    except Exception as exc:
+        logger.warning("Reddit OAuth token request failed: %s", exc)
+        return None
 
 # Default subreddits ordered roughly by signal density for ticker-specific
 # discussion. wallstreetbets has the most volume but most noise; stocks /
@@ -44,14 +93,38 @@ def _fetch_subreddit(
         "t": "week",  # last 7 days
         "limit": limit,
     })
-    url = _API.format(sub=sub, qs=qs)
-    req = Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})
-    try:
-        with urlopen(req, timeout=timeout) as resp:
-            payload = json.loads(resp.read())
-    except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
-        logger.warning("Reddit fetch failed for r/%s · %s: %s", sub, ticker, exc)
-        return []
+    token = _get_oauth_token()
+    if token:
+        url = _OAUTH_API.format(sub=sub, qs=qs)
+        headers = {"Authorization": f"Bearer {token}",
+                   "User-Agent": _UA, "Accept": "application/json"}
+    else:
+        url = _PUBLIC_API.format(sub=sub, qs=qs)
+        headers = {"User-Agent": _UA, "Accept": "application/json"}
+
+    # Prefer curl_cffi with safari17 impersonation — Reddit currently allows it
+    # while blocking plain urllib/requests with 403.
+    if _HAS_CFFI and not token:
+        try:
+            r = _cffi_requests.get(url, headers=headers,
+                                   impersonate="safari17_0", timeout=timeout)
+            if r.status_code != 200:
+                logger.warning("Reddit (cffi) r/%s . %s: HTTP %s",
+                               sub, ticker, r.status_code)
+                return []
+            payload = r.json()
+        except Exception as exc:
+            logger.warning("Reddit (cffi) fetch failed for r/%s . %s: %s",
+                           sub, ticker, exc)
+            return []
+    else:
+        req = Request(url, headers=headers)
+        try:
+            with urlopen(req, timeout=timeout) as resp:
+                payload = json.loads(resp.read())
+        except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
+            logger.warning("Reddit fetch failed for r/%s . %s: %s", sub, ticker, exc)
+            return []
     children = (payload.get("data") or {}).get("children") or []
     return [c.get("data", {}) for c in children if isinstance(c, dict)]
 
@@ -69,6 +142,8 @@ def fetch_reddit_posts(
     ``inter_request_delay`` keeps us under Reddit's public rate limit
     (~10 req/min per IP) even if the caller queries many subreddits.
     """
+    if _DISABLED:
+        return f"<Reddit data disabled via TRADINGAGENTS_DISABLE_REDDIT for {ticker.upper()}>"
     blocks = []
     total_posts = 0
     for i, sub in enumerate(subreddits):
