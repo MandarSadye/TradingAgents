@@ -43,7 +43,34 @@ def get_YFin_data_online(
     # Add header information
     header = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n"
     header += f"# Total records: {len(data)}\n"
-    header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+    # Freshness / staleness annotation
+    try:
+        last_bar_ts = data.index[-1]
+        last_bar_str = pd.Timestamp(last_bar_ts).strftime("%Y-%m-%d %H:%M:%S")
+        header += f"# Last bar timestamp: {last_bar_str}\n"
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        if pd.Timestamp(last_bar_ts).to_pydatetime().date() < end_dt.date():
+            header += (
+                f"# STALENESS_WARNING: last bar ({last_bar_str}) precedes requested "
+                f"end_date ({end_date}). The market may have moved since.\n"
+            )
+        # Last-bar session move vs prior close
+        if len(data) >= 2:
+            last_close = float(data["Close"].iloc[-1])
+            prior_close = float(data["Close"].iloc[-2])
+            if prior_close:
+                move_pct = (last_close - prior_close) / prior_close * 100.0
+                if abs(move_pct) > 10.0:
+                    header += (
+                        f"# STALENESS_WARNING: last bar moved {move_pct:+.1f}% vs prior close. "
+                        "Re-fetch a live intraday quote before quoting RSI/ATR levels.\n"
+                    )
+    except Exception:
+        pass
+
+    header += "\n"
 
     return header + csv_string
 
@@ -262,6 +289,16 @@ def get_fundamentals(
             ("Sector", info.get("sector")),
             ("Industry", info.get("industry")),
             ("Market Cap", info.get("marketCap")),
+            ("Enterprise Value", info.get("enterpriseValue")),
+            ("Shares Outstanding", info.get("sharesOutstanding")),
+            ("Float Shares", info.get("floatShares")),
+            ("Shares Short", info.get("sharesShort")),
+            ("Shares Short Prior Month", info.get("sharesShortPriorMonth")),
+            ("Shares Short Prior Month Date", info.get("sharesShortPreviousMonthDate")),
+            ("Short Ratio (Days-to-Cover)", info.get("shortRatio")),
+            ("Short % of Float", info.get("shortPercentOfFloat")),
+            ("Total Cash", info.get("totalCash")),
+            ("Total Debt", info.get("totalDebt")),
             ("PE Ratio (TTM)", info.get("trailingPE")),
             ("Forward PE", info.get("forwardPE")),
             ("PEG Ratio", info.get("pegRatio")),

@@ -1,6 +1,14 @@
 import os
 import sys
 import json
+
+# Make stdout/stderr tolerant of non-ASCII (emoji, em-dash, etc.) on Windows cp1252.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from pathlib import Path
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor, as_completed

@@ -10,6 +10,7 @@ from tradingagents.agents.schemas import TraderProposal, render_trader_proposal
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
     get_language_instruction,
+    get_microcap_guardrails,
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
@@ -24,6 +25,7 @@ def create_trader(llm):
         company_name = state["company_of_interest"]
         instrument_context = build_instrument_context(company_name)
         investment_plan = state["investment_plan"]
+        mechanical_report = state.get("mechanical_setup_report", "") or ""
 
         messages = [
             {
@@ -31,8 +33,14 @@ def create_trader(llm):
                 "content": (
                     "You are a trading agent analyzing market data to make investment decisions. "
                     "Based on your analysis, provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the analysts' reports and the research plan."
+                    "Anchor your reasoning in the analysts' reports and the research plan. "
+                    "When the MechanicalSetup report is present, treat its quoted price, float, "
+                    "short interest, EV, and runway figures as CANONICAL -- any conflicting numbers "
+                    "in narrative reports are stale. Prefer a tiered `entry_ladder` over a single "
+                    "`entry_price` for any sub-$300M-market-cap US-listed equity, and always supply "
+                    "a `sell_ladder` when proposing Sell."
                     + get_language_instruction()
+                    + get_microcap_guardrails()
                 ),
             },
             {
@@ -43,6 +51,7 @@ def create_trader(llm):
                     f"insights from current technical market trends, macroeconomic indicators, and "
                     f"social media sentiment. Use this plan as a foundation for evaluating your next "
                     f"trading decision.\n\nProposed Investment Plan: {investment_plan}\n\n"
+                    f"MechanicalSetup Report (canonical price / float / runway):\n{mechanical_report}\n\n"
                     f"Leverage these insights to make an informed and strategic decision."
                 ),
             },

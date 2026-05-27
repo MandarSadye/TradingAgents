@@ -56,6 +56,15 @@ class AgentState(MessagesState):
         str, "Report from the News Researcher of current world affairs"
     ]
     fundamentals_report: Annotated[str, "Report from the Fundamentals Researcher"]
+    mechanical_setup_report: Annotated[
+        str, "Report from the MechanicalSetup Analyst (float / SI / EV / runway / archetype)"
+    ]
+    pump_archetype_match: Annotated[
+        str, "Name of the matched pump archetype, or 'none'"
+    ]
+    data_quality_grade: Annotated[
+        str, "Data-quality grade block produced by the Portfolio Manager"
+    ]
 
     # researcher team discussion step
     investment_debate_state: Annotated[

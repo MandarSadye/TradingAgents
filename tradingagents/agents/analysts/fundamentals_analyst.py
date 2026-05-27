@@ -7,6 +7,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_income_statement,
     get_insider_transactions,
     get_language_instruction,
+    get_microcap_guardrails,
 )
 from tradingagents.dataflows.config import get_config
 
@@ -27,7 +28,29 @@ def create_fundamentals_analyst(llm):
             "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
             + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
             + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements."
-            + get_language_instruction(),
+            + """
+
+## Reconciliation discipline (HARD RULE)
+
+The MechanicalSetup analyst has already produced a `mechanical_setup_report`
+in the shared state containing canonical values for `market_cap`,
+`enterprise_value`, `floatShares`, short interest, and cash runway.
+
+When you report market cap and enterprise value:
+1. Pull them from `get_fundamentals` AND cross-check against the
+   `mechanical_setup_report` values.
+2. If the two sources disagree by more than 5%, flag the discrepancy in
+   your report and re-fetch `get_fundamentals` once to attempt
+   reconciliation.
+3. ALWAYS surface enterprise value next to market cap -- never quote
+   market cap alone. A negative EV is a material observation and must be
+   flagged at the top of your report.
+
+When `recommendationKey` is absent or equals `"none"` in
+`get_fundamentals` output, explicitly state "no sell-side coverage" --
+do not fabricate a consensus."""
+            + get_language_instruction()
+            + get_microcap_guardrails(),
         )
 
         prompt = ChatPromptTemplate.from_messages(

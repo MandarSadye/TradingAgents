@@ -10,6 +10,7 @@ from .y_finance import (
     get_income_statement as get_yfinance_income_statement,
     get_insider_transactions as get_yfinance_insider_transactions,
 )
+from .microcap_mechanics import get_microcap_mechanics as get_yfinance_microcap_mechanics
 from .yfinance_news import get_news_yfinance, get_global_news_yfinance
 from .alpha_vantage import (
     get_stock as get_alpha_vantage_stock,
@@ -57,7 +58,13 @@ TOOLS_CATEGORIES = {
             "get_global_news",
             "get_insider_transactions",
         ]
-    }
+    },
+    "microcap_mechanics": {
+        "description": "Float / short-interest / EV / runway / splits microcap mechanics extractor",
+        "tools": [
+            "get_microcap_mechanics",
+        ]
+    },
 }
 
 VENDOR_LIST = [
@@ -106,6 +113,10 @@ VENDOR_METHODS = {
     "get_insider_transactions": {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
+    },
+    # microcap_mechanics
+    "get_microcap_mechanics": {
+        "yfinance": get_yfinance_microcap_mechanics,
     },
 }
 
